@@ -1,9 +1,11 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 
 app = Flask(__name__)
+CORS(app)
 
 # DB connection info
 DB_HOST = "localhost"
@@ -47,6 +49,77 @@ def register():
     conn.close()
 
     return jsonify({"id": user_id, "message": "User registered"}), 201
+
+@app.route('/users', methods=['GET'])
+def list_users():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, full_name, email, role, profile_pic_url, created_at
+        FROM users;
+    """)
+    users = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(users)
+
+@app.route('/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, full_name, email, role, profile_pic_url, created_at
+        FROM users WHERE id=%s;
+    """, (user_id,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    if user:
+        return jsonify(user)
+    else:
+        return jsonify({"message": "User not found"}), 404
+
+@app.route('/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    data = request.get_json()
+    full_name = data.get('full_name')
+    email = data.get('email')
+    role = data.get('role')
+    profile_pic_url = data.get('profile_pic_url')
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE users
+        SET full_name=%s, email=%s, role=%s, profile_pic_url=%s
+        WHERE id=%s
+        RETURNING id;
+    """, (full_name, email, role, profile_pic_url, user_id))
+    updated = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    if updated:
+        return jsonify({"id": updated['id'], "message": "User updated"})
+    else:
+        return jsonify({"message": "User not found"}), 404
+
+@app.route('/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM users WHERE id=%s RETURNING id;", (user_id,))
+    deleted = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    if deleted:
+        return jsonify({"id": deleted['id'], "message": "User deleted"})
+    else:
+        return jsonify({"message": "User not found"}), 404
+
 
 
 @app.route('/login', methods=['POST'])
