@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from db import get_db_connection
 
+# 🚨 Removed `strict_slashes=False` here
 user_bp = Blueprint('users', __name__)
 
 @user_bp.route('/', methods=['GET'])
@@ -72,3 +73,4 @@ def delete_user(user_id):
         return jsonify({"id": deleted['id'], "message": "User deleted"})
     else:
         return jsonify({"message": "User not found"}), 404
+

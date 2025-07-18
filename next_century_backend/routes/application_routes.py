@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from db import get_db_connection
+from mailer import send_signup_email
 import uuid
 import datetime
 
@@ -26,6 +27,7 @@ def apply():
 
     return jsonify({"id": application_id, "message": "Application submitted and pending approval."}), 201
 
+
 @application_bp.route('/<int:app_id>/approve', methods=['POST'])
 def approve_application(app_id):
     conn = get_db_connection()
@@ -44,6 +46,8 @@ def approve_application(app_id):
         return jsonify({"message": "Application not found"}), 404
 
     parent_email = result['parent_email']
+
+    # Generate unique signup token
     token = str(uuid.uuid4())
     expires_at = datetime.datetime.now() + datetime.timedelta(days=2)
 
@@ -55,9 +59,14 @@ def approve_application(app_id):
     cur.close()
     conn.close()
 
-    print(f"Signup link for {parent_email}: http://yourdomain/signup?token={token}")
+    signup_link = f"http://127.0.0.1:5000/signup?token={token}"
+    send_signup_email(parent_email, signup_link)
 
-    return jsonify({"message": "Application approved. Signup link sent."})
+    print(f"✅ Signup link for {parent_email}: {signup_link}")
+
+    return jsonify({"message": "Application approved. Signup link sent.", "signup_link": signup_link})
+
+
 
 @application_bp.route('/<int:app_id>/reject', methods=['POST'])
 def reject_application(app_id):
@@ -74,3 +83,19 @@ def reject_application(app_id):
     conn.close()
 
     return jsonify({"message": "Application rejected."})
+
+@application_bp.route('/pending', methods=['GET'])
+def list_pending_applications():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, parent_name, parent_email, child_name, grade_id, created_at
+        FROM applications
+        WHERE status = 'pending'
+        ORDER BY created_at DESC;
+    """)
+    pending_apps = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(pending_apps)
+
