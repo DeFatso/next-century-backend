@@ -6,20 +6,29 @@ from routes.application_routes import application_bp
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
-
-    # Register Blueprints
+    
+    # Configure CORS
+    CORS(app,
+        resources={
+            r"/applications/*": {
+                "origins": ["http://localhost:3000"],
+                "methods": ["GET", "POST", "OPTIONS"],
+                "allow_headers": ["Authorization", "Content-Type"]
+            }
+        })
+    
+    # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp, url_prefix='/users')
-    app.register_blueprint(application_bp, url_prefix='/applications')
-
+    app.register_blueprint(application_bp)
+    
     @app.route('/')
     def home():
-        return {"message": "Welcome to Next Century Online School API!"}
-
+        return {"message": "Welcome to the API!"}
+    
     return app
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = create_app()
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5000)
+    
