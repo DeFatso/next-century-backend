@@ -1,6 +1,11 @@
 from flask import Blueprint, jsonify, request
 from db import get_db_connection
 import datetime
+from db import get_db_connection
+
+auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
+
+from werkzeug.security import generate_password_hash
 
 
 auth_bp = Blueprint('auth', __name__)
@@ -55,9 +60,6 @@ def login():
         })
     else:
         return jsonify({"message": "Invalid credentials"}), 401
-
-@auth_bp.route('/signup', methods=['POST'])
-def signup():
     token = request.args.get('token')
     if not token:
         return jsonify({"message": "Missing signup token"}), 400
@@ -123,3 +125,161 @@ def signup():
     conn.close()
 
     return jsonify({"message": "Signup complete", "user_id": user_id}), 201
+
+@auth_bp.route('/signup', methods=['POST', 'OPTIONS'])
+def signup():
+    if request.method == 'OPTIONS':
+        # CORS preflight support
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "http://localhost:3000")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response, 200
+
+    data = request.get_json()
+    token = data.get("token")
+    password = data.get("password")
+
+    if not token or not password:
+        return jsonify({"message": "Missing token or password"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Validate token
+    cur.execute("""
+        SELECT application_id, expires_at FROM signup_tokens
+        WHERE token = %s
+    """, (token,))
+    token_row = cur.fetchone()
+
+    if not token_row:
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Invalid or expired token"}), 400
+
+    if token_row["expires_at"] < datetime.datetime.now():
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Token has expired"}), 400
+
+    application_id = token_row["application_id"]
+
+    # Get application data
+    cur.execute("""
+        SELECT parent_name, parent_email, grade_id
+        FROM applications
+        WHERE id = %s
+    """, (application_id,))
+    app_row = cur.fetchone()
+
+    if not app_row:
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Associated application not found"}), 400
+
+    # Hash password
+    password_hash = generate_password_hash(password)
+
+    # Insert user
+    cur.execute("""
+        INSERT INTO users (full_name, email, password_hash, grade_id, created_at)
+        VALUES (%s, %s, %s, %s, NOW())
+        RETURNING id
+    """, (
+        app_row["parent_name"],
+        app_row["parent_email"],
+        password_hash,
+        app_row["grade_id"]
+    ))
+    user_id = cur.fetchone()["id"]
+
+    # Delete token
+    cur.execute("DELETE FROM signup_tokens WHERE token = %s", (token,))
+    conn.commit()
+
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "message": "✅ Signup complete",
+        "user_id": user_id
+    }), 201
+
+    if request.method == 'OPTIONS':
+        # CORS preflight support
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "http://localhost:3000")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response, 200
+
+    data = request.get_json()
+    token = data.get("token")
+    password = data.get("password")
+
+    if not token or not password:
+        return jsonify({"message": "Missing token or password"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Validate token
+    cur.execute("""
+        SELECT application_id, expires_at FROM signup_tokens
+        WHERE token = %s
+    """, (token,))
+    token_row = cur.fetchone()
+
+    if not token_row:
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Invalid or expired token"}), 400
+
+    if token_row["expires_at"] < datetime.datetime.now():
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Token has expired"}), 400
+
+    application_id = token_row["application_id"]
+
+    # Get application data
+    cur.execute("""
+        SELECT parent_name, parent_email, grade_id
+        FROM applications
+        WHERE id = %s
+    """, (application_id,))
+    app_row = cur.fetchone()
+
+    if not app_row:
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Associated application not found"}), 400
+
+    # Hash password
+    password_hash = generate_password_hash(password)
+
+    # Insert user
+    cur.execute("""
+        INSERT INTO users (full_name, email, password_hash, grade_id, created_at)
+        VALUES (%s, %s, %s, %s, NOW())
+        RETURNING id
+    """, (
+        app_row["parent_name"],
+        app_row["parent_email"],
+        password_hash,
+        app_row["grade_id"]
+    ))
+    user_id = cur.fetchone()["id"]
+
+    # Delete token
+    cur.execute("DELETE FROM signup_tokens WHERE token = %s", (token,))
+    conn.commit()
+
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "message": "✅ Signup complete",
+        "user_id": user_id
+    }), 201
