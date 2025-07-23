@@ -31,8 +31,65 @@ def register():
 
     return jsonify({"id": user_id, "message": "User registered"}), 201
 
-@auth_bp.route('/login', methods=['POST'])
+from flask import Blueprint, jsonify, request
+from db import get_db_connection
+import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+
+auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
+
+@auth_bp.route('/login', methods=['POST', 'OPTIONS'])
 def login():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+
+    data = request.get_json()
+    if not data or 'email' not in data or 'password_hash' not in data:
+        return jsonify({"message": "Email and password are required"}), 400
+
+    email = data['email']
+    password_hash = data['password_hash']
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        # First get the user's stored password hash
+        cur.execute("""
+            SELECT id, full_name, email, grade_id, password_hash
+            FROM users
+            WHERE email=%s;
+        """, (email,))
+        user = cur.fetchone()
+
+        if not user:
+            return jsonify({"message": "User not found"}), 404
+
+        # Compare password hashes
+        if not check_password_hash(user['password_hash'], password_hash):
+            return jsonify({"message": "Invalid password"}), 401
+
+        # If we get here, login is successful
+        return jsonify({
+            "message": "Login successful",
+            "user": {
+                "id": user['id'],
+                "full_name": user['full_name'],
+                "email": user['email'],
+                "grade_id": user['grade_id']
+            }
+        })
+    except Exception as e:
+        return jsonify({"message": f"Server error: {str(e)}"}), 500
+    finally:
+        cur.close()
+        conn.close()
+
     data = request.get_json()
     email = data['email']
     password_hash = data['password_hash']
