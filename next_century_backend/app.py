@@ -3,6 +3,7 @@ from flask_cors import CORS
 from routes.auth_routes import auth_bp
 from routes.user_routes import user_bp
 from routes.application_routes import application_bp
+from resources import resources_bp
 
 def create_app():
     app = Flask(__name__)
@@ -25,12 +26,19 @@ def create_app():
                 "methods": ["GET", "POST", "OPTIONS"],
                 "allow_headers": ["Authorization", "Content-Type"]
             },
+            r"/resources/*": {  # 👈 Add this block
+             "origins": ["http://localhost:3000"],
+             "methods": ["GET", "POST", "OPTIONS"],
+             "allow_headers": ["Authorization", "Content-Type"]
+         }
         })
 
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp, url_prefix='/users')
     app.register_blueprint(application_bp)
+    app.register_blueprint(resources_bp)
+
     
     @app.route('/')
     def home():
