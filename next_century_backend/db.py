@@ -1,17 +1,12 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-DB_HOST = "localhost"
-DB_NAME = "next_century"
-DB_USER = "school_admin"
-DB_PASS = input("Enter your database password: ")
-
 def get_db_connection():
     conn = psycopg2.connect(
-        host=DB_HOST,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASS,
-        cursor_factory=RealDictCursor
+        host="localhost",
+        database="next_century_db",
+        user="admin",
+        password="clarity",
+        cursor_factory=RealDictCursor  # This will return dictionaries
     )
     return conn
