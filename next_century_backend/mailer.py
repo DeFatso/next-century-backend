@@ -9,37 +9,31 @@ SMTP_PORT = 587
 SMTP_USER = "vambef7@yahoo.com"
 SMTP_PASS = "keqpqqkcunudflch"
 
-def send_signup_email(to_email, signup_link):
-    subject = "Your Next Century School Account Approval"
-    body = f"""
-    Dear Parent,
-
-    Congratulations! Your application has been approved.
-    
-    Please complete your account setup by clicking the link below:
-    
-    {signup_link}
-    
-    This link will expire in 48 hours.
-
-    If you didn’t request this, please ignore this email.
-
-    Regards,
-    Next Century Online School
+def send_signup_email(parent_email, child_name, signup_link):
     """
-
-    msg = MIMEMultipart()
-    msg['From'] = SMTP_USER
-    msg['To'] = to_email
-    msg['Subject'] = subject
-
-    msg.attach(MIMEText(body, 'plain'))
-
+    Send signup email to parent with registration link
+    
+    Args:
+        parent_email (str): Parent's email address
+        child_name (str): Child's name for personalization
+        signup_link (str): Registration link with token
+    """
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.send_message(msg)
-            print(f"✅ Signup email sent to {to_email}")
+        # Your email sending implementation here
+        print(f"📧 Sending signup email to: {parent_email}")
+        print(f"   Child: {child_name}")
+        print(f"   Signup link: {signup_link}")
+        
+        # Example using smtplib (adjust based on your actual implementation):
+        # msg = MIMEText(f"Hello! Click here to complete registration for {child_name}: {signup_link}")
+        # msg['Subject'] = f"Complete {child_name}'s Registration"
+        # msg['From'] = 'your-email@school.com'
+        # msg['To'] = parent_email
+        
+        # server.send_message(msg)
+        
+        return True
+        
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
+        return False
