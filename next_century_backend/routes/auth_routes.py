@@ -49,6 +49,56 @@ def login():
         return response
 
     data = request.get_json()
+    if not data or 'email' not in data or 'password' not in data:  # Change 'password_hash' to 'password'
+        return jsonify({"message": "Email and password are required"}), 400
+
+    email = data['email']
+    password = data['password']  # Get the plain text password
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        # First get the user's stored password hash
+        cur.execute("""
+            SELECT id, full_name, email, grade_id, password_hash
+            FROM users
+            WHERE email=%s;
+        """, (email,))
+        user = cur.fetchone()
+
+        if not user:
+            return jsonify({"message": "User not found"}), 404
+
+        # Compare the provided password with the stored hash
+        if not check_password_hash(user['password_hash'], password):  # Compare plain text password with hash
+            return jsonify({"message": "Invalid password"}), 401
+
+        # If we get here, login is successful
+        return jsonify({
+            "message": "Login successful",
+            "user": {
+                "id": user['id'],
+                "full_name": user['full_name'],
+                "email": user['email'],
+                "grade_id": user['grade_id']
+            }
+        })
+    except Exception as e:
+        return jsonify({"message": f"Server error: {str(e)}"}), 500
+    finally:
+        cur.close()
+        conn.close()
+        
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+
+    data = request.get_json()
     if not data or 'email' not in data or 'password_hash' not in data:
         return jsonify({"message": "Email and password are required"}), 400
 
