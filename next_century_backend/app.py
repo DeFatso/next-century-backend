@@ -8,6 +8,7 @@ from routes.dashboard_routes import dashboard_bp
 from routes.admin_routes import admin_bp
 from routes.lesson_routes import lesson_bp
 from routes.subject_routes import subject_bp
+from routes.grade_routes import grade_bp
 
 def create_app():
     app = Flask(__name__)
@@ -45,6 +46,7 @@ def create_app():
     app.register_blueprint(resources_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(subject_bp)
+    app.register_blueprint(grade_bp)
     app.register_blueprint(lesson_bp)
 
     
