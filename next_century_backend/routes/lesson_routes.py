@@ -90,10 +90,11 @@ def get_lesson(lesson_id):
             "details": str(e)
         }), 500
 
-# Create new lesson (admin only)
-@lesson_bp.route('/', methods=['POST'])
+# routes/lesson_routes.py - Update create_lesson function
+@lesson_bp.route('/grade/<int:grade_id>', methods=['POST'])
+@cross_origin()
 @admin_required
-def create_lesson():
+def create_lesson_for_grade(grade_id):
     try:
         data = request.get_json()
         
@@ -105,8 +106,19 @@ def create_lesson():
                     "error": "missing_field"
                 }), 400
         
+        # Verify subject belongs to the specified grade
         conn = get_db_connection()
         cur = conn.cursor()
+        
+        cur.execute("SELECT id FROM subjects WHERE id = %s AND grade_id = %s", 
+                   (data['subject_id'], grade_id))
+        subject = cur.fetchone()
+        
+        if not subject:
+            return jsonify({
+                "message": "Subject does not belong to the specified grade",
+                "error": "invalid_subject"
+            }), 400
         
         cur.execute("""
             INSERT INTO lessons (title, subject_id, content_text, video_url, created_by)
@@ -117,17 +129,16 @@ def create_lesson():
             data['subject_id'],
             data['content_text'],
             data.get('video_url'),
-            data.get('created_by')  # Could be set to current user ID
+            data.get('created_by')
         ))
         
         lesson_id = cur.fetchone()['id']
         conn.commit()
-        
         cur.close()
         conn.close()
         
         return jsonify({
-            "message": "Lesson created successfully",
+            "message": "Lesson created successfully for grade",
             "lesson_id": lesson_id
         }), 201
         
