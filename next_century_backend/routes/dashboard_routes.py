@@ -4,59 +4,53 @@ from functools import wraps
 import datetime
 from routes.auth_routes import auth_bp
 
-
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
-# Add this decorator for protecting routes that require authentication
+# Decorator to protect routes (placeholder)
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # You'll need to implement your authentication logic here
-        # For now, we'll use a simple session check or token verification
-        # This will be enhanced when you implement JWT
+        # Authentication logic to be added later
         return f(*args, **kwargs)
     return decorated_function
+
 
 @auth_bp.route('/dashboard', methods=['GET'])
 @login_required
 def user_dashboard():
     try:
-        # Get user ID from session or token (you'll implement this properly later)
-        user_id = request.args.get('user_id')  # Temporary - will use proper auth
+        user_id = request.args.get('user_id')  # Temporary auth
         
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Get user basic info
+        # Fetch user info along with grade in a single query
         cur.execute("""
-            SELECT id, full_name, email, role, grade_id, profile_pic_url, created_at
-            FROM users WHERE id = %s
+            SELECT u.id, u.full_name, u.email, u.role, u.grade_id, u.profile_pic_url,
+                   u.created_at, g.name as grade_name
+            FROM users u
+            LEFT JOIN grades g ON u.grade_id = g.id
+            WHERE u.id = %s
         """, (user_id,))
         user = cur.fetchone()
         
-        # Get user's grade name
-        cur.execute("""
-            SELECT g.name as grade_name 
-            FROM users u
-            JOIN grades g ON u.grade_id = g.id
-            WHERE u.id = %s
-        """, (user_id,))
-        grade = cur.fetchone()
-        
-        # Get upcoming assignments (next 7 days)
+        if not user:
+            return jsonify({"message": "User not found"}), 404
+
+        # Fetch upcoming assignments (next 7 days)
         cur.execute("""
             SELECT a.id, a.title, a.due_date, s.name as subject_name
             FROM assignments a
             JOIN subjects s ON a.subject_id = s.id
             JOIN enrollments e ON s.grade_id = e.grade_id
-            WHERE e.student_id = %s 
+            WHERE e.student_id = %s
             AND a.due_date BETWEEN NOW() AND NOW() + INTERVAL '7 days'
             ORDER BY a.due_date ASC
             LIMIT 5
         """, (user_id,))
         upcoming_assignments = cur.fetchall()
         
-        # Get recent submissions
+        # Fetch recent submissions
         cur.execute("""
             SELECT s.assignment_id, a.title, s.submitted_at, s.grade
             FROM submissions s
@@ -69,14 +63,14 @@ def user_dashboard():
         
         cur.close()
         conn.close()
-        
+
         return jsonify({
             "user": {
                 "id": user['id'],
                 "full_name": user['full_name'],
                 "email": user['email'],
                 "role": user['role'],
-                "grade": grade['grade_name'] if grade else None,
+                "grade_name": user['grade_name'],
                 "profile_pic": user['profile_pic_url'],
                 "member_since": user['created_at'].strftime('%B %Y')
             },
@@ -102,11 +96,12 @@ def user_dashboard():
     except Exception as e:
         return jsonify({"message": f"Error fetching dashboard: {str(e)}"}), 500
 
+
 @auth_bp.route('/profile', methods=['GET'])
 @login_required
 def user_profile():
     try:
-        user_id = request.args.get('user_id')  # Temporary
+        user_id = request.args.get('user_id')  # Temporary auth
         
         conn = get_db_connection()
         cur = conn.cursor()
@@ -123,21 +118,21 @@ def user_profile():
         cur.close()
         conn.close()
         
-        if user:
-            return jsonify({
-                "profile": {
-                    "id": user['id'],
-                    "full_name": user['full_name'],
-                    "email": user['email'],
-                    "role": user['role'],
-                    "grade": user['grade_name'],
-                    "profile_picture": user['profile_pic_url'],
-                    "member_since": user['created_at'].strftime('%B %d, %Y'),
-                    "account_age_days": (datetime.datetime.now() - user['created_at']).days
-                }
-            })
-        else:
+        if not user:
             return jsonify({"message": "User not found"}), 404
+
+        return jsonify({
+            "profile": {
+                "id": user['id'],
+                "full_name": user['full_name'],
+                "email": user['email'],
+                "role": user['role'],
+                "grade_name": user['grade_name'],
+                "profile_picture": user['profile_pic_url'],
+                "member_since": user['created_at'].strftime('%B %d, %Y'),
+                "account_age_days": (datetime.datetime.now() - user['created_at']).days
+            }
+        })
             
     except Exception as e:
         return jsonify({"message": f"Error fetching profile: {str(e)}"}), 500
