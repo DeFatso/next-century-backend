@@ -9,6 +9,7 @@ from routes.admin_routes import admin_bp
 from routes.lesson_routes import lesson_bp
 from routes.subject_routes import subject_bp
 from routes.grade_routes import grade_bp
+from routes.assignment_routes import assignment_bp
 
 def create_app():
     app = Flask(__name__)
@@ -48,6 +49,7 @@ def create_app():
     app.register_blueprint(subject_bp)
     app.register_blueprint(grade_bp)
     app.register_blueprint(lesson_bp)
+    app.register_blueprint(assignment_bp)
 
     
     @app.route('/')
