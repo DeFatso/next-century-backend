@@ -85,7 +85,7 @@ def apply():
             VALUES (%s, %s, %s, %s, 'pending', NOW())
             RETURNING id
         """, (parent_name, parent_email, child_name, grade_id))
-        
+
         application_id = cur.fetchone()["id"]
         conn.commit()
 
@@ -102,7 +102,7 @@ def apply():
             "error": "database_error",
             "details": str(e)
         }), 500
-        
+
     finally:
         if cur:
             cur.close()
@@ -113,84 +113,6 @@ def apply():
 @application_bp.route('/', methods=['GET'])
 @admin_required
 def list_applications():
-    status = request.args.get('status', 'pending')
-    
-    try:
-        conn = get_db_connection()
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT 
-                    a.id,
-                    a.parent_name,
-                    a.parent_email,
-                    a.child_name,
-                    g.name as grade,
-                    a.status,
-                    a.created_at
-                FROM applications a
-                JOIN grades g ON a.grade_id = g.id
-                WHERE a.status = %s
-                ORDER BY a.created_at DESC;
-            """, (status,))
-            
-            applications = cur.fetchall()
-            return jsonify(applications)
-
-    except Exception as e:
-        return jsonify({
-            "message": "Failed to fetch applications",
-            "error": str(e)
-        }), 500
-        
-    finally:
-        if 'conn' in locals():
-            conn.close()
-    status = request.args.get('status', 'pending')
-    
-    conn = None
-    cur = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # Execute query with JOIN to get grade name
-        cur.execute("""
-            SELECT 
-                a.id,
-                a.parent_name,
-                a.parent_email,
-                a.child_name,
-                g.name as grade,
-                a.status,
-                a.created_at
-            FROM applications a
-            JOIN grades g ON a.grade_id = g.id
-            WHERE a.status = %s
-            ORDER BY a.created_at DESC;
-        """, (status,))
-        
-        # Get column names from cursor description
-        columns = [desc[0] for desc in cur.description]
-        
-        # Convert results to list of dictionaries
-        applications = []
-        for row in cur.fetchall():
-            applications.append(dict(zip(columns, row)))
-        
-        return jsonify(applications)
-
-    except Exception as e:
-        return jsonify({
-            "message": "Failed to fetch applications",
-            "error": str(e)
-        }), 500
-        
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
-
     status = request.args.get('status', 'pending')
     if status not in ['pending', 'approved', 'rejected']:
         return jsonify({
@@ -203,19 +125,19 @@ def list_applications():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
+
         cur.execute("""
-            SELECT a.id, a.parent_name, a.parent_email, a.child_name, 
+            SELECT a.id, a.parent_name, a.parent_email, a.child_name,
                    g.name AS grade, a.status, a.created_at
             FROM applications a
             JOIN grades g ON a.grade_id = g.id
             WHERE a.status = %s
             ORDER BY a.created_at DESC;
         """, (status,))
-        
+
         columns = [desc[0] for desc in cur.description]
         apps = [dict(zip(columns, row)) for row in cur.fetchall()]
-        
+
         return jsonify(apps)
 
     except Exception as e:
@@ -224,7 +146,7 @@ def list_applications():
             "error": "database_error",
             "details": str(e)
         }), 500
-        
+
     finally:
         if cur:
             cur.close()
@@ -247,9 +169,9 @@ def approve_application(app_id):
             UPDATE applications
             SET status = 'approved'
             WHERE id = %s
-            RETURNING parent_email, child_name;
+            RETURNING parent_email, child_name, parent_name;
         """, (app_id,))
-        
+
         result = cur.fetchone()
         if not result:
             return jsonify({
@@ -259,6 +181,7 @@ def approve_application(app_id):
 
         parent_email = result['parent_email']
         child_name = result['child_name']
+        parent_name = result['parent_name']
         token = str(uuid.uuid4())
         expires_at = datetime.datetime.now() + datetime.timedelta(days=2)
 
@@ -267,7 +190,7 @@ def approve_application(app_id):
             INSERT INTO signup_tokens (application_id, token, expires_at)
             VALUES (%s, %s, %s);
         """, (app_id, token, expires_at))
-        
+
         conn.commit()
 
         # Send email
@@ -287,7 +210,7 @@ def approve_application(app_id):
             "error": "database_error",
             "details": str(e)
         }), 500
-        
+
     finally:
         if cur:
             cur.close()
@@ -311,13 +234,13 @@ def reject_application(app_id):
             WHERE id = %s
             RETURNING id;
         """, (app_id,))
-        
+
         if cur.rowcount == 0:
             return jsonify({
                 "message": "Application not found",
                 "error": "not_found"
             }), 404
-            
+
         conn.commit()
         return jsonify({"message": "Application rejected."})
 
@@ -329,7 +252,7 @@ def reject_application(app_id):
             "error": "database_error",
             "details": str(e)
         }), 500
-        
+
     finally:
         if cur:
             cur.close()
