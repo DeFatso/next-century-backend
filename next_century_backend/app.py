@@ -3,7 +3,7 @@ from flask_cors import CORS
 from routes.auth_routes import auth_bp
 from routes.user_routes import user_bp
 from routes.application_routes import application_bp
-from resources import resources_bp
+from uploads.resources.resources import resources_bp
 from routes.dashboard_routes import dashboard_bp
 from routes.admin_routes import admin_bp
 from routes.lesson_routes import lesson_bp
@@ -14,30 +14,8 @@ from routes.assignment_routes import assignment_bp
 def create_app():
     app = Flask(__name__)
     
-    # Configure CORS
-    CORS(app,
-        resources={
-            r"/applications/*": {
-                "origins": ["http://localhost:3000"],
-                "methods": ["GET", "POST", "OPTIONS"],
-                "allow_headers": ["Authorization", "Content-Type"]
-            },
-            r"/auth/*": {
-                "origins": ["http://localhost:3000"],
-                "methods": ["GET", "POST", "OPTIONS"],
-                "allow_headers": ["Authorization", "Content-Type"]
-            },
-            r"/users/*": {
-                "origins": ["http://localhost:3000"],
-                "methods": ["GET", "POST", "OPTIONS"],
-                "allow_headers": ["Authorization", "Content-Type"]
-            },
-            r"/resources/*": {  # 👈 Add this block
-             "origins": ["http://localhost:3000"],
-             "methods": ["GET", "POST", "OPTIONS"],
-             "allow_headers": ["Authorization", "Content-Type"]
-         }
-        })
+    # Enable CORS for all routes during development
+    CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
     # Register blueprints
     app.register_blueprint(auth_bp)
@@ -51,7 +29,6 @@ def create_app():
     app.register_blueprint(lesson_bp)
     app.register_blueprint(assignment_bp)
 
-    
     @app.route('/')
     def home():
         return {"message": "Welcome to the API!"}
