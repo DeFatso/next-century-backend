@@ -1,12 +1,13 @@
 import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg2.extras
 
 def get_db_connection():
     conn = psycopg2.connect(
         host="localhost",
         database="next_century_db",
-        user="admin",
-        password="clarity",
-        cursor_factory=RealDictCursor  # This will return dictionaries
+        user="postgres",
+        password="clarity"
     )
+    # Use DictCursor
+    conn.cursor_factory = psycopg2.extras.RealDictCursor
     return conn

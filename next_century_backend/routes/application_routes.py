@@ -1,3 +1,17 @@
+import psycopg2
+import psycopg2.extras
+
+def get_db_connection():
+    conn = psycopg2.connect(
+        host="localhost",
+        database="next_century_db",
+        user="postgres",
+        password="clarity"
+    )
+    # Use DictCursor for dictionary results
+    conn.cursor_factory = psycopg2.extras.RealDictCursor
+    return conn
+
 from flask import Blueprint, jsonify, request
 from db import get_db_connection
 from mailer import send_signup_email
@@ -109,7 +123,7 @@ def apply():
         if conn:
             conn.close()
 
-# 📄 Admin — list applications
+# 📄 Admin — list applications (FIXED)
 @application_bp.route('/', methods=['GET'])
 @admin_required
 def list_applications():
@@ -135,9 +149,8 @@ def list_applications():
             ORDER BY a.created_at DESC;
         """, (status,))
 
-        columns = [desc[0] for desc in cur.description]
-        apps = [dict(zip(columns, row)) for row in cur.fetchall()]
-
+        # RealDictCursor returns dictionaries directly - no conversion needed
+        apps = cur.fetchall()
         return jsonify(apps)
 
     except Exception as e:
