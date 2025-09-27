@@ -175,7 +175,7 @@ def signup():
         ))
         parent_id = cur.fetchone()["id"]
 
-        # Create child account linked to parent
+        # Create child account linked to parent (grade_id is set directly - no enrollments needed)
         cur.execute("""
             INSERT INTO users (full_name, email, password_hash, role, parent_id, grade_id, created_at)
             VALUES (%s, %s, %s, 'student', %s, %s, NOW())
@@ -185,15 +185,9 @@ def signup():
             f"child_{app_row['parent_email']}",  # Generate unique email for child
             password_hash,
             parent_id,
-            app_row["grade_id"]
+            app_row["grade_id"]  # Grade is set directly - no enrollments table needed
         ))
         child_id = cur.fetchone()["id"]
-
-        # Enroll child in their grade
-        cur.execute("""
-            INSERT INTO enrollments (student_id, grade_id, enrolled_at)
-            VALUES (%s, %s, NOW())
-        """, (child_id, app_row["grade_id"]))
 
         # Delete token
         cur.execute("DELETE FROM signup_tokens WHERE token = %s", (token,))
@@ -297,3 +291,8 @@ def get_profile():
     finally:
         cur.close()
         conn.close()
+
+# Optional: Add a health check endpoint
+@auth_bp.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "healthy", "service": "auth"})

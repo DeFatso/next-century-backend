@@ -11,6 +11,7 @@ from routes.subject_routes import subject_bp
 from routes.grade_routes import grade_bp
 from routes.assignment_routes import assignment_bp
 from routes.teacher_routes import teacher_bp
+from routes.teacher_routes.dashboard import teacher_dashboard_bp
 
 def create_app():
     app = Flask(__name__)
@@ -30,6 +31,8 @@ def create_app():
     app.register_blueprint(lesson_bp)
     app.register_blueprint(assignment_bp)
     app.register_blueprint(teacher_bp)
+    app.register_blueprint(teacher_dashboard_bp, url_prefix="/teacher/dashboard")
+
 
     @app.route('/')
     def home():
